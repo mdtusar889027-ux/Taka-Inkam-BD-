@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taka Income BD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #121212; color: #ffffff; }
+        .dark-bg { background-color: #121212; }
+        .card-bg { background-color: #1e1e1e; }
+        .border-accent { border-color: #10b981; }
+        .text-accent { color: #10b981; }
+        .btn, .btn-accent, .btn-outline-accent { transition: all 0.2s ease-in-out; transform: scale(1); }
+        .btn:active:not(:disabled), .btn-accent:active:not(:disabled) { transform: scale(0.95); }
+        .btn-accent { background-color: #10b981; color: #121212; font-weight: bold; }
+        .btn-accent:hover:not(:disabled) { background-color: #059669; }
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .input-field { background-color: #2c2c2c; border: 1px solid #444; color: white; outline: none; }
+        .input-field:focus { border-color: #10b981; }
+        
+        /* Tab page animations */
+        .sub-page { display: none; }
+        .sub-page.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        .bottom-nav a.active { color: #10b981; }
+        .nav-link.active { color: #10b981; }
+        .notification-dot {
+            position: absolute; top: -2px; right: -2px; width: 10px; height: 10px;
+            background-color: #ef4444; border-radius: 50%; border: 2px solid #121212; display: none;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .popup-anim { animation: popUp 0.3s ease-out; }
+    </style>
+</head>
+<body class="max-w-md mx-auto relative min-h-screen overflow-x-hidden flex flex-col">
+
+    <!-- Loader -->
+    <div id="loader" class="flex fixed inset-0 bg-[#121212] items-center justify-center z-[150]">
+        <div class="flex flex-col items-center">
+            <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-accent mb-4"></div>
+            <p class="text-accent font-semibold tracking-wide">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[110] p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-[#1e1e1e] border border-gray-700 rounded-xl p-6 w-full max-w-sm text-center popup-anim">
+            <div id="modal-icon" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-500/20 mb-4 text-blue-500">
+                <i data-lucide="info" class="w-6 h-6"></i>
+            </div>
+            <h3 id="modal-title" class="text-xl font-bold mb-2 text-white">Notice</h3>
+            <p id="modal-msg" class="text-gray-300 mb-6 text-sm"></p>
+            <button onclick="window.closeModal()" class="btn-accent w-full py-3 rounded-lg">OK</button>
+        </div>
+    </div>
+
+    <!-- Notification Dialog -->
+    <div id="notification-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[110] p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-[#1e1e1e] border border-gray-700 rounded-xl p-6 w-full max-w-sm popup-anim">
+            <div class="flex items-center gap-2 border-b border-gray-800 pb-3 mb-4">
+                <i data-lucide="bell" class="w-6 h-6 text-accent"></i>
+                <h3 class="text-lg font-bold text-white">Inbox Notice</h3>
+            </div>
+            <h4 id="notif-title" class="font-bold text-white mb-1 text-base">No Title</h4>
+            <p id="notif-msg" class="text-gray-300 text-sm mb-6 leading-relaxed">No active notifications at this moment.</p>
+            <button onclick="document.getElementById('notification-modal').classList.add('hidden')" class="btn-accent w-full py-2.5 rounded-lg">Close</button>
+        </div>
+    </div>
+
+    <!-- 30s Ad Viewer Screen -->
+    <div id="ad-viewer" class="hidden fixed inset-0 bg-black z-[100] flex-col">
+        <!-- Header bar -->
+        <div class="bg-gray-900 text-white p-4 flex justify-between items-center border-b border-gray-800 z-20 shadow-md">
+            <span class="font-bold text-accent flex items-center gap-2">
+                <i data-lucide="monitor-play" class="w-5 h-5"></i> Ad Running...
+            </span>
+            <div id="timer-container" class="bg-gray-800 px-4 py-1.5 rounded-full text-sm border border-gray-700 font-medium">Time Left: <span id="ad-timer" class="text-accent font-bold text-lg w-6 inline-block text-center">30</span>s</div>
+            <button id="ad-close-btn" class="hidden text-white hover:text-red-500 bg-gray-800 p-2 rounded-full border border-gray-700 transition-colors">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+        
+        <!-- App/Ad Iframe Container -->
+        <div class="flex-1 relative w-full h-full bg-[#121212] overflow-hidden">
+            <div class="absolute inset-0 flex flex-col items-center justify-center z-0">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent mx-auto mb-4"></div>
+                <p class="text-gray-400 font-medium animate-pulse text-sm">Loading Content...</p>
+            </div>
+            
+            <iframe id="ad-iframe" class="w-full h-full border-none absolute inset-0 z-10 bg-transparent" src="" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+            
+            <div id="ad-success-overlay" class="hidden absolute inset-0 bg-black/95 flex-col items-center justify-center z-30 backdrop-blur-sm transition-opacity">
+                <div class="text-center px-6 popup-anim">
+                    <div class="text-accent mx-auto mb-6 flex justify-center">
+                        <i data-lucide="check-circle" class="w-24 h-24 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"></i>
+                    </div>
+                    <h3 class="text-3xl font-bold text-white mb-3 tracking-wide">Task Completed!</h3>
+                    <p class="text-gray-300 text-lg max-w-sm mx-auto leading-relaxed">You've successfully finished watching the ad. Click the <strong class="text-white bg-gray-800 px-2 py-1 rounded mx-1 border border-gray-600">X</strong> button on the top right to claim your reward.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Section (Hidden by default, controlled by JS) -->
+    <div id="auth-section" class="min-h-screen p-6 flex-col justify-center hidden">
+        <div class="flex justify-center mb-6">
+            <div class="w-20 h-20 rounded-2xl bg-accent/20 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                <i data-lucide="zap" class="w-10 h-10 text-accent"></i>
+            </div>
+        </div>
+        <h1 class="text-4xl font-extrabold text-center mb-2 text-white">Taka Income</h1>
+        <p class="text-center text-gray-400 mb-8 font-medium tracking-wide">Earn money by doing simple tasks</p>
+        
+        <div id="auth-container" class="card-bg p-6 rounded-2xl border border-gray-800 shadow-2xl relative overflow-hidden">
+            <div id="login-view">
+                <h2 class="text-xl font-bold text-white mb-6">Welcome Back</h2>
+                <input id="login-email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl input-field mb-4">
+                <input id="login-password" type="password" placeholder="Password" class="w-full p-4 rounded-xl input-field mb-6">
+                <button id="login-btn" class="w-full p-4 rounded-xl btn-accent mb-4 text-lg">Login Securely</button>
+                <p class="text-center text-gray-400 mt-4">Don't have an account? <button id="show-signup" class="font-bold text-accent hover:underline">Sign Up</button></p>
+            </div>
+            
+            <div id="signup-view" class="hidden">
+                <h2 class="text-xl font-bold text-white mb-6">Create Account</h2>
+                <input id="signup-name" type="text" placeholder="Full Name" class="w-full p-4 rounded-xl input-field mb-4">
+                <input id="signup-email" type="email" placeholder="Email Address" class="w-full p-4 rounded-xl input-field mb-4">
+                <input id="signup-password" type="password" placeholder="Password (min 6 chars)" class="w-full p-4 rounded-xl input-field mb-6">
+                <button id="signup-btn" class="w-full p-4 rounded-xl btn-accent mb-4 text-lg">Create Account</button>
+                <p class="text-center text-gray-400 mt-4">Already have an account? <button id="show-login" class="font-bold text-accent hover:underline">Login</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Section (Hidden by default, controlled by JS) -->
+    <div id="app-container" class="min-h-screen flex-col pb-24 relative hidden">
+        <header class="flex items-center justify-between p-5 sticky top-0 bg-[#121212]/90 backdrop-blur-md z-10 border-b border-gray-800">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded bg-accent flex items-center justify-center"><i data-lucide="zap" class="w-5 h-5 text-black"></i></div>
+                <h1 class="text-lg font-bold text-white tracking-wide">Taka Income</h1>
+            </div>
+            <div class="flex items-center space-x-5">
+                <div id="notification-bell" class="relative cursor-pointer hover:text-accent transition-colors" onclick="window.showNotification()">
+                    <i data-lucide="bell" class="w-6 h-6"></i>
+                    <div id="notification-dot" class="notification-dot"></div>
+                </div>
+                <i data-lucide="user-circle" class="w-7 h-7 cursor-pointer hover:text-accent transition-colors" onclick="window.navigateTo('profile-page')"></i>
+            </div>
+        </header>
+
+        <main class="flex-grow">
+            <!-- Home Page -->
+            <div id="home-page" class="p-5 space-y-6 sub-page active">
+                
+                <!-- Main Balance Card -->
+                <div class="card-bg p-6 rounded-2xl flex items-center justify-between border border-gray-800 shadow-lg relative overflow-hidden">
+                    <div class="absolute -right-10 -top-10 w-32 h-32 bg-accent/10 rounded-full blur-2xl"></div>
+                    <div class="relative z-10">
+                        <p class="text-gray-400 text-sm font-medium mb-1">Total Balance</p>
+                        <p class="text-4xl font-extrabold text-white flex items-center gap-2">
+                            <i data-lucide="coins" class="w-8 h-8 text-yellow-500"></i>
+                            <span id="coin-balance">0</span>
+                        </p>
+                    </div>
+                    <button onclick="window.navigateTo('wallet-page')" class="bg-white text-black font-bold px-6 py-3 rounded-xl btn hover:bg-gray-200 shadow-md relative z-10">Withdraw</button>
+                </div>
+                
+                <!-- Compact Live Payouts Ticker (1 by 1 scroll, beautiful 2-line layout) -->
+                <div class="card-bg border border-gray-800 rounded-xl px-4 py-3 flex items-center overflow-hidden shadow-md relative">
+                    <div class="flex items-center justify-center bg-emerald-500/10 rounded-lg w-8 h-8 mr-3 shrink-0 relative z-10">
+                        <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+                    </div>
+                    <!-- Increased height to 52px to seamlessly hold both layout lines -->
+                    <div class="flex-1 overflow-hidden relative" style="height: 52px;">
+                        <div id="payout-ticker" class="flex flex-col w-full absolute left-0 right-0 top-0">
+                            <!-- Items will be injected via JS here -->
+                        </div>
+                    </div>
+                </div>
+                <!-- END Compact Live Payouts Ticker -->
+
+                <section>
+                    <div class="flex justify-between items-center mb-5">
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Daily Rewards</h2>
+                            <p class="text-sm text-gray-400 mt-1">Complete limits daily to earn maximum.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- Task 1 -->
+                        <div class="card-bg p-4 rounded-xl border border-gray-800 hover:border-gray-600 transition-colors">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400"><i data-lucide="globe" class="w-6 h-6"></i></div>
+                                    <div>
+                                        <h3 class="font-bold text-white">Premium Ad Visit 1</h3>
+                                        <p class="text-xs text-gray-400 mt-0.5">Reward: <span id="reward-val-1" class="text-accent font-bold">0</span> Coins</p>
+                                    </div>
+                                </div>
+                                <button id="btn-task-1" class="btn-accent px-5 py-2.5 rounded-lg text-sm disabled:opacity-40" onclick="window.startWebTask(1)">Start</button>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-1.5">
+                                <div id="prog-bar-1" class="bg-accent h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <p id="prog-text-1" class="text-xs font-medium text-gray-500 mt-2 text-right">0 / 0 Completed</p>
+                        </div>
+
+                        <!-- Task 2 -->
+                        <div class="card-bg p-4 rounded-xl border border-gray-800 hover:border-gray-600 transition-colors">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400"><i data-lucide="layout" class="w-6 h-6"></i></div>
+                                    <div>
+                                        <h3 class="font-bold text-white">Premium Ad Visit 2</h3>
+                                        <p class="text-xs text-gray-400 mt-0.5">Reward: <span id="reward-val-2" class="text-accent font-bold">0</span> Coins</p>
+                                    </div>
+                                </div>
+                                <button id="btn-task-2" class="btn-accent px-5 py-2.5 rounded-lg text-sm disabled:opacity-40" onclick="window.startWebTask(2)">Start</button>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-1.5">
+                                <div id="prog-bar-2" class="bg-accent h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <p id="prog-text-2" class="text-xs font-medium text-gray-500 mt-2 text-right">0 / 0 Completed</p>
+                        </div>
+
+                        <!-- Task 3 -->
+                        <div class="card-bg p-4 rounded-xl border border-gray-800 hover:border-gray-600 transition-colors">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400"><i data-lucide="laptop" class="w-6 h-6"></i></div>
+                                    <div>
+                                        <h3 class="font-bold text-white">Premium Ad Visit 3</h3>
+                                        <p class="text-xs text-gray-400 mt-0.5">Reward: <span id="reward-val-3" class="text-accent font-bold">0</span> Coins</p>
+                                    </div>
+                                </div>
+                                <button id="btn-task-3" class="btn-accent px-5 py-2.5 rounded-lg text-sm disabled:opacity-40" onclick="window.startWebTask(3)">Start</button>
+                            </div>
+                            <div class="w-full bg-gray-800 rounded-full h-1.5">
+                                <div id="prog-bar-3" class="bg-accent h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <p id="prog-text-3" class="text-xs font-medium text-gray-500 mt-2 text-right">0 / 0 Completed</p>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- Wallet Page -->
+            <div id="wallet-page" class="p-5 space-y-6 sub-page">
+                <h2 class="text-2xl font-bold text-white mb-2">My Wallet</h2>
+                
+                <div class="card-bg p-6 rounded-2xl border border-gray-800 shadow-lg">
+                    <div class="flex justify-between items-end mb-6 border-b border-gray-700 pb-4">
+                        <div>
+                            <p class="text-sm text-gray-400 mb-1">Available to Withdraw</p>
+                            <p class="text-3xl font-bold text-accent"><span id="wallet-coin-balance">0</span><span class="text-lg text-gray-400 ml-1">Coins</span></p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-400 mb-1">Min. Limit</p>
+                            <p class="text-sm font-bold text-white bg-gray-800 px-3 py-1 rounded-lg"><span id="ui-min-with">0</span> Coins</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 mb-6 flex items-center justify-center gap-2 text-blue-400 text-sm font-medium">
+                        <i data-lucide="info" class="w-4 h-4"></i> Rate: <span id="ui-coin-val">100</span> Coins = <span id="ui-taka-val" class="font-bold">1</span> BDT
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Withdraw Amount (Coins)</label>
+                            <input id="withdraw-amount" type="number" placeholder="Enter amount" class="w-full p-4 rounded-xl input-field text-lg font-bold">
+                            <!-- Live Taka Preview Block -->
+                            <p class="text-xs text-accent mt-2 font-medium">You will get: Tk <span id="live-taka-preview">0.00</span></p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Payment Gateway</label>
+                            <select id="withdraw-method" class="w-full p-4 rounded-xl input-field appearance-none bg-[#2c2c2c] font-medium">
+                                <option value="" disabled selected>Select method...</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Account Number</label>
+                            <input id="withdraw-account" type="number" placeholder="e.g. 017XXXXXXX" class="w-full p-4 rounded-xl input-field font-medium">
+                        </div>
+                        
+                        <button id="withdraw-btn" class="w-full p-4 rounded-xl btn-accent mt-2 text-lg shadow-[0_0_15px_rgba(16,185,129,0.2)]">Submit Request</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="history" class="w-5 h-5 text-gray-400"></i> Recent Transactions</h3>
+                    <div id="withdrawal-history-list" class="space-y-3">
+                        <div class="text-center py-6 border border-gray-800 border-dashed rounded-xl card-bg">
+                            <i data-lucide="inbox" class="w-8 h-8 text-gray-600 mx-auto mb-2"></i>
+                            <p class="text-gray-500 text-sm">No transaction history yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Page -->
+            <div id="profile-page" class="p-5 space-y-6 sub-page">
+                <h2 class="text-2xl font-bold text-white mb-2">My Profile</h2>
+                
+                <div class="card-bg p-6 rounded-2xl border border-gray-800 shadow-lg text-center relative overflow-hidden">
+                    <div class="mx-auto w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center mb-4">
+                        <i data-lucide="user" class="w-10 h-10 text-accent"></i>
+                    </div>
+                    <h3 id="profile-name" class="text-xl font-bold text-white">Loading...</h3>
+                    <p id="profile-email" class="text-gray-400 text-sm mt-1">user@example.com</p>
+                </div>
+
+                <!-- Community Links section -->
+                <div class="card-bg p-5 rounded-xl border border-gray-800">
+                    <h3 class="font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="link-2" class="w-5 h-5 text-accent"></i> Community Channels</h3>
+                    <div class="space-y-3">
+                        <a id="profile-tg-btn" href="#" target="_blank" class="flex items-center justify-between p-3.5 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-600/20 rounded-xl transition text-blue-400 text-sm font-semibold">
+                            <span class="flex items-center gap-2"><i data-lucide="send" class="w-4 h-4"></i> Join Telegram Channel</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </a>
+                        <a id="profile-fb-btn" href="#" target="_blank" class="flex items-center justify-between p-3.5 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-600/20 rounded-xl transition text-indigo-400 text-sm font-semibold">
+                            <span class="flex items-center gap-2"><i data-lucide="facebook" class="w-4 h-4"></i> Follow Facebook Page</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </a>
+                        <a id="profile-admin-btn" href="#" target="_blank" class="flex items-center justify-between p-3.5 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-600/20 rounded-xl transition text-emerald-400 text-sm font-semibold">
+                            <span class="flex items-center gap-2"><i data-lucide="message-circle" class="w-4 h-4"></i> Contact Support Admin</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <button id="logout-btn" class="w-full py-4 rounded-xl border border-red-500/30 hover:bg-red-500/10 text-red-400 font-bold transition">Logout Account</button>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="bottom-nav fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#1e1e1e] border-t border-gray-800 flex justify-around p-3 z-40 shadow-2xl">
+            <a href="#" onclick="window.navigateTo('home-page')" class="nav-link flex flex-col items-center text-gray-400 hover:text-white transition active" data-tab="home-page">
+                <i data-lucide="home" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Home</span>
+            </a>
+            <a href="#" onclick="window.navigateTo('wallet-page')" class="nav-link flex flex-col items-center text-gray-400 hover:text-white transition" data-tab="wallet-page">
+                <i data-lucide="wallet" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Wallet</span>
+            </a>
+            <a href="#" onclick="window.navigateTo('profile-page')" class="nav-link flex flex-col items-center text-gray-400 hover:text-white transition" data-tab="profile-page">
+                <i data-lucide="user" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Profile</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- FIREBASE MODULES -->
+    <script type="module">
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDkw-m85MyhY6knKKlLwVuID25dJixPc2s",
+            authDomain: "taka-income-bd-92690.firebaseapp.com",
+            databaseURL: "https://taka-income-bd-92690-default-rtdb.firebaseio.com",
+            projectId: "taka-income-bd-92690",
+            storageBucket: "taka-income-bd-92690.firebasestorage.app",
+            messagingSenderId: "587927751633",
+            appId: "1:587927751633:web:ecfe44c2864766ba066ef0"
+        };
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Initialize Firebase services
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Core App Selectors
+        const loader = document.getElementById('loader');
+        const customModal = document.getElementById('custom-modal');
+        const authSection = document.getElementById('auth-section');
+        const appContainer = document.getElementById('app-container');
+
+        // Dynamic parameters updated from Admin Panel in real time
+        let globalCoinValueCoins = 100;
+        let globalCoinValueTaka = 1;
+        let globalMinWithdrawal = 5000;
+        let adLimit1 = 5, adLimit2 = 5, adLimit3 = 5;
+        let adReward1 = 100, adReward2 = 100, adReward3 = 100;
+        let adUrl1 = "", adUrl2 = "", adUrl3 = "";
+
+        // UI trigger loaders 
+        function showLoader(show) {
+            if (show) {
+                loader.classList.remove('hidden');
+                loader.classList.add('flex');
+            } else {
+                loader.classList.add('hidden');
+                loader.classList.remove('flex');
+            }
+        }
+
+        window.showModal = function(title, msg, type = 'info') {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-msg').textContent = msg;
+            const iconWrap = document.getElementById('modal-icon');
+            
+            if (type === 'success') {
+                iconWrap.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-emerald-500/20 mb-4 text-emerald-500";
+                iconWrap.innerHTML = `<i data-lucide="check-circle" class="w-6 h-6"></i>`;
+            } else if (type === 'error') {
+                iconWrap.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-500/20 mb-4 text-red-500";
+                iconWrap.innerHTML = `<i data-lucide="alert-triangle" class="w-6 h-6"></i>`;
+            } else {
+                iconWrap.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-500/20 mb-4 text-blue-500";
+                iconWrap.innerHTML = `<i data-lucide="info" class="w-6 h-6"></i>`;
+            }
+            lucide.createIcons();
+            customModal.classList.remove('hidden');
+            customModal.classList.add('flex');
+        }
+
+        window.closeModal = function() {
+            customModal.classList.add('hidden');
+            customModal.classList.remove('flex');
+        }
+
+        // Screen routing toggles
+        window.navigateTo = function(pageId) {
+            document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) targetPage.classList.add('active');
+
+            // Bottom Navigation syncs
+            document.querySelectorAll('.bottom-nav a').forEach(a => {
+                a.classList.remove('active');
+                if (a.getAttribute('data-tab') === pageId) {
+                    a.classList.add('active');
+                }
+            });
+        }
+
+        // Switch View Auth
+        document.getElementById('show-signup').addEventListener('click', () => {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('signup-view').classList.remove('hidden');
+        });
+
+        document.getElementById('show-login').addEventListener('click', () => {
+            document.getElementById('signup-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+        });
+
+        // Sign Up Controller
+        document.getElementById('signup-btn').addEventListener('click', async () => {
+            const name = document.getElementById('signup-name').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+
+            if (!name || !email || !password) {
+                return window.showModal("Opps!", "Please complete all registration boxes.", "error");
+            }
+            if (password.length < 6) {
+                return window.showModal("Opps!", "Password must be at least 6 characters.", "error");
+            }
+
+            showLoader(true);
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                // Create profile in database
+                await setDoc(doc(db, "users", cred.user.uid), {
+                    uid: cred.user.uid,
+                    name: name,
+                    email: email,
+                    coins: 0,
+                    status: 'active',
+                    task1Count: 0,
+                    task2Count: 0,
+                    task3Count: 0,
+                    lastTaskResetDate: new Date().toDateString()
+                });
+                window.showModal("Success", "Account created successfully!", "success");
+            } catch (e) {
+                window.showModal("Signup Failed", e.message, "error");
+                showLoader(false);
+            }
+        });
+
+        // Sign In Controller
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            if (!email || !password) {
+                return window.showModal("Opps!", "Provide both email and password.", "error");
+            }
+
+            showLoader(true);
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (e) {
+                window.showModal("Login Failed", e.message, "error");
+                showLoader(false);
+            }
+        });
+
+        // Live Coin-to-Taka Input Listener
+        document.getElementById('withdraw-amount').addEventListener('input', function() {
+            const coins = parseInt(this.value) || 0;
+            const calculatedTaka = (coins / globalCoinValueCoins) * globalCoinValueTaka;
+            document.getElementById('live-taka-preview').textContent = calculatedTaka.toFixed(2);
+        });
+
+        // Firebase State Observer
+        let currentUserData = null;
+        let unsubscribeUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            showLoader(true);
+            if (user) {
+                // UI Toggle 
+                authSection.classList.add('hidden');
+                authSection.classList.remove('flex');
+                appContainer.classList.remove('hidden');
+                appContainer.classList.add('flex');
+                
+                // Track current user document changes
+                if (unsubscribeUser) unsubscribeUser();
+                
+                unsubscribeUser = onSnapshot(doc(db, "users", user.uid), (snap) => {
+                    if (snap.exists()) {
+                        currentUserData = snap.data();
+                        
+                        // Check block status (Added safety check ?.)
+                        if (currentUserData?.status === 'blocked') {
+                            showLoader(false);
+                            window.showModal("Account Blocked", "Your account is banned/blocked by administrators.", "error");
+                            signOut(auth);
+                            return;
+                        }
+
+                        // Core Resets daily tracking
+                        const todayDateStr = new Date().toDateString();
+                        if (currentUserData?.lastTaskResetDate !== todayDateStr) {
+                            updateDoc(doc(db, "users", user.uid), {
+                                task1Count: 0,
+                                task2Count: 0,
+                                task3Count: 0,
+                                lastTaskResetDate: todayDateStr
+                            });
+                        }
+
+                        // Sync UI values (Added safety checks ?.)
+                        document.getElementById('coin-balance').textContent = currentUserData?.coins || 0;
+                        document.getElementById('wallet-coin-balance').textContent = currentUserData?.coins || 0;
+                        document.getElementById('profile-name').textContent = currentUserData?.name || 'User Profile';
+                        document.getElementById('profile-email').textContent = currentUserData?.email || '';
+
+                        // Render Limits Progrees
+                        updateProgressBars();
+                    }
+                    showLoader(false);
+                }, (err) => {
+                    console.error("User doc track error:", err);
+                    showLoader(false);
+                });
+
+                // Set up core config trackings
+                loadConfigData();
+                // Set up withdrawals trackings (Safe Version)
+                loadUserTransactions(user.uid);
+                // Set up live notice tracking
+                loadLiveNotification();
+
+            } else {
+                // UI Toggle 
+                authSection.classList.remove('hidden');
+                authSection.classList.add('flex');
+                appContainer.classList.add('hidden');
+                appContainer.classList.remove('flex');
+                
+                showLoader(false);
+                if (unsubscribeUser) {
+                    unsubscribeUser();
+                    unsubscribeUser = null;
+                }
+            }
+        });
+
+        // Config loader
+        function loadConfigData() {
+            onSnapshot(doc(db, "settings", "general"), (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    // Min withdraw limit
+                    globalMinWithdrawal = Number(data.minWithdrawal) || 5000;
+                    document.getElementById('ui-min-with').textContent = globalMinWithdrawal;
+
+                    // Converters Rates
+                    globalCoinValueCoins = Number(data.coinValueCoins) || 100;
+                    globalCoinValueTaka = Number(data.coinValueTaka) || 1;
+                    document.getElementById('ui-coin-val').textContent = globalCoinValueCoins;
+                    document.getElementById('ui-taka-val').textContent = globalCoinValueTaka;
+
+                    // Trigger any typed input calculations updates
+                    const amtInput = document.getElementById('withdraw-amount');
+                    if (amtInput.value) {
+                        const calculatedTaka = (parseInt(amtInput.value) || 0) / globalCoinValueCoins * globalCoinValueTaka;
+                        document.getElementById('live-taka-preview').textContent = calculatedTaka.toFixed(2);
+                    }
+
+                    // Limits and URLs assignments
+                    adLimit1 = Number(data.task1Limit) || 5;
+                    adLimit2 = Number(data.task2Limit) || 5;
+                    adLimit3 = Number(data.task3Limit) || 5;
+
+                    adReward1 = Number(data.task1Reward) || 100;
+                    adReward2 = Number(data.task2Reward) || 100;
+                    adReward3 = Number(data.task3Reward) || 100;
+
+                    adUrl1 = data.task1Url || "";
+                    adUrl2 = data.task2Url || "";
+                    adUrl3 = data.task3Url || "";
+
+                    document.getElementById('reward-val-1').textContent = adReward1;
+                    document.getElementById('reward-val-2').textContent = adReward2;
+                    document.getElementById('reward-val-3').textContent = adReward3;
+
+                    // Community profiles Links
+                    document.getElementById('profile-tg-btn').href = data.telegramLink || "#";
+                    document.getElementById('profile-fb-btn').href = data.facebookLink || "#";
+                    document.getElementById('profile-admin-btn').href = data.adminContactLink || "#";
+
+                    // Dynamic payment Gateways inside select
+                    const select = document.getElementById('withdraw-method');
+                    const savedMethods = data.withdrawalMethods || ["bKash", "Nagad", "Rocket"];
+                    select.innerHTML = '<option value="" disabled selected>Select method...</option>';
+                    savedMethods.forEach(method => {
+                        const opt = document.createElement('option');
+                        opt.value = method;
+                        opt.textContent = method;
+                        select.appendChild(opt);
+                    });
+
+                    updateProgressBars();
+                }
+            }, (err) => console.error("Config loaded error:", err));
+        }
+
+        // Live notification monitor
+        let lastNotifTime = 0;
+        function loadLiveNotification() {
+            onSnapshot(doc(db, "settings", "notification"), (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('notif-title').textContent = data.title || "Announcement";
+                    document.getElementById('notif-msg').textContent = data.message || "";
+                    
+                    const time = data.time || 0;
+                    const savedTime = localStorage.getItem('last_notif_time');
+                    if (time && time.toString() !== savedTime) {
+                        document.getElementById('notification-dot').style.display = 'block';
+                    }
+                    lastNotifTime = time;
+                }
+            });
+        }
+
+        window.showNotification = function() {
+            document.getElementById('notification-modal').classList.remove('hidden');
+            document.getElementById('notification-modal').classList.add('flex');
+            document.getElementById('notification-dot').style.display = 'none';
+            if (lastNotifTime) {
+                localStorage.setItem('last_notif_time', lastNotifTime.toString());
+            }
+        }
+
+        // Update home UI bars
+        function updateProgressBars() {
+            if (!currentUserData) return;
+
+            const limit1 = adLimit1 || 1;
+            const limit2 = adLimit2 || 1;
+            const limit3 = adLimit3 || 1;
+
+            // Task 1 Bar
+            const t1Count = currentUserData?.task1Count || 0;
+            const t1Pct = Math.min((t1Count / limit1) * 100, 100);
+            document.getElementById('prog-bar-1').style.width = t1Pct + '%';
+            document.getElementById('prog-text-1').textContent = `${t1Count} / ${limit1} Completed`;
+            document.getElementById('btn-task-1').disabled = (t1Count >= limit1);
+
+            // Task 2 Bar
+            const t2Count = currentUserData?.task2Count || 0;
+            const t2Pct = Math.min((t2Count / limit2) * 100, 100);
+            document.getElementById('prog-bar-2').style.width = t2Pct + '%';
+            document.getElementById('prog-text-2').textContent = `${t2Count} / ${limit2} Completed`;
+            document.getElementById('btn-task-2').disabled = (t2Count >= limit2);
+
+            // Task 3 Bar
+            const t3Count = currentUserData?.task3Count || 0;
+            const t3Pct = Math.min((t3Count / limit3) * 100, 100);
+            document.getElementById('prog-bar-3').style.width = t3Pct + '%';
+            document.getElementById('prog-text-3').textContent = `${t3Count} / ${limit3} Completed`;
+            document.getElementById('btn-task-3').disabled = (t3Count >= limit3);
+        }
+
+        // Load Withdrawal Transactions History list (FIXED Performance Issue)
+        function loadUserTransactions(userId) {
+            const wList = document.getElementById('withdrawal-history-list');
+            
+            // SECURITY FIX: Querying only current user's data instead of downloading all users' data
+            const q = query(collection(db, "withdrawals"), where("userId", "==", userId));
+            
+            onSnapshot(q, (snapshot) => {
+                const userWithdrawals = [];
+                snapshot.forEach(docSnap => {
+                    userWithdrawals.push(docSnap.data());
+                });
+
+                // Sort newest transactions to top
+                userWithdrawals.sort((a,b) => (b.time || 0) - (a.time || 0));
+
+                if (userWithdrawals.length === 0) {
+                    wList.innerHTML = `
+                        <div class="text-center py-6 border border-gray-800 border-dashed rounded-xl card-bg">
+                            <i data-lucide="inbox" class="w-8 h-8 text-gray-600 mx-auto mb-2"></i>
+                            <p class="text-gray-500 text-sm">No transaction history yet.</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                wList.innerHTML = '';
+                userWithdrawals.forEach(tx => {
+                    let badgeClass = "bg-orange-500/10 text-orange-400 border border-orange-500/20";
+                    if (tx.status === "Approved") badgeClass = "bg-emerald-500/10 text-accent border border-emerald-500/20";
+                    if (tx.status === "Rejected") badgeClass = "bg-red-500/10 text-red-400 border border-red-500/20";
+
+                    const dateStr = tx.time ? new Date(tx.time).toLocaleDateString() : 'Recent';
+
+                    const item = document.createElement('div');
+                    item.className = "card-bg p-4 rounded-xl border border-gray-800 flex justify-between items-center";
+                    item.innerHTML = `
+                        <div>
+                            <p class="font-bold text-white">${tx.method || 'N/A'}</p>
+                            <p class="text-xs text-gray-500 mt-1 font-mono">${tx.accountNumber || 'N/A'} • ${dateStr}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-extrabold text-accent text-sm">Tk ${tx.amount || 0}</p>
+                            <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mt-1.5 ${badgeClass}">${tx.status || 'Pending'}</span>
+                        </div>
+                    `;
+                    wList.appendChild(item);
+                });
+            });
+        }
+
+        // Action Web Task Viewer controller
+        let activeTaskId = 0;
+        let adInterval = null;
+        let adSeconds = 30;
+
+        window.startWebTask = function(taskId) {
+            if (!currentUserData) return;
+            
+            // Validate Limit Cap before launching (Added safety check ?.)
+            if (taskId === 1 && (currentUserData?.task1Count || 0) >= adLimit1) return;
+            if (taskId === 2 && (currentUserData?.task2Count || 0) >= adLimit2) return;
+            if (taskId === 3 && (currentUserData?.task3Count || 0) >= adLimit3) return;
+
+            let finalUrl = "";
+            if (taskId === 1) finalUrl = adUrl1;
+            if (taskId === 2) finalUrl = adUrl2;
+            if (taskId === 3) finalUrl = adUrl3;
+
+            if (!finalUrl) {
+                return window.showModal("Ad Link Not Ready", "This task link is not configured yet. Please try later.", "error");
+            }
+
+            activeTaskId = taskId;
+            adSeconds = 30;
+            document.getElementById('ad-timer').textContent = adSeconds;
+            
+            document.getElementById('ad-close-btn').classList.add('hidden');
+            document.getElementById('ad-success-overlay').classList.add('hidden');
+            document.getElementById('ad-viewer').classList.remove('hidden');
+            document.getElementById('ad-viewer').classList.add('flex');
+            
+            // Set URL to Iframe src
+            document.getElementById('ad-iframe').src = finalUrl;
+
+            // Start 30s Countdown timer
+            adInterval = setInterval(() => {
+                adSeconds--;
+                document.getElementById('ad-timer').textContent = adSeconds;
+                if (adSeconds <= 0) {
+                    clearInterval(adInterval);
+                    // Open completed claims overlay
+                    document.getElementById('ad-success-overlay').classList.remove('hidden');
+                    document.getElementById('ad-close-btn').classList.remove('hidden');
+                    lucide.createIcons();
+                }
+            }, 1000);
+        }
+
+        // Ad viewer Close trigger with rewards payout logic
+        document.getElementById('ad-close-btn').addEventListener('click', async () => {
+            clearInterval(adInterval);
+            document.getElementById('ad-viewer').classList.add('hidden');
+            document.getElementById('ad-viewer').classList.remove('flex');
+            document.getElementById('ad-iframe').src = "";
+
+            const authUser = auth.currentUser;
+            if (!authUser) return window.showModal("Error", "You must be logged in to claim rewards.", "error");
+
+            showLoader(true);
+            try {
+                // Determine rewards values (Added safety checks ?.)
+                let payout = 0;
+                let updateObject = {};
+
+                if (activeTaskId === 1) {
+                    payout = adReward1;
+                    updateObject.task1Count = (currentUserData?.task1Count || 0) + 1;
+                } else if (activeTaskId === 2) {
+                    payout = adReward2;
+                    updateObject.task2Count = (currentUserData?.task2Count || 0) + 1;
+                } else if (activeTaskId === 3) {
+                    payout = adReward3;
+                    updateObject.task3Count = (currentUserData?.task3Count || 0) + 1;
+                }
+
+                updateObject.coins = (currentUserData?.coins || 0) + payout;
+
+                await updateDoc(doc(db, "users", authUser.uid), updateObject);
+                window.showModal("Great Job!", `Success! You've received +${payout} Coins.`, "success");
+            } catch (e) {
+                window.showModal("Update Failed", e.message, "error");
+            } finally {
+                showLoader(false);
+            }
+        });
+
+        // Submit Withdrawal form request workflow
+        document.getElementById('withdraw-btn').addEventListener('click', async () => {
+            const authUser = auth.currentUser;
+            if (!authUser) return window.showModal("Auth Error", "Please login again to request withdrawal.", "error");
+
+            const amount = parseInt(document.getElementById('withdraw-amount').value) || 0;
+            const method = document.getElementById('withdraw-method').value;
+            const accountNum = document.getElementById('withdraw-account').value.trim();
+
+            if (!amount || !method || !accountNum) {
+                return window.showModal("Inputs Blank", "Please complete all fields of withdrawal form.", "error");
+            }
+            if (amount < globalMinWithdrawal) {
+                return window.showModal("Limit Error", `Minimum withdrawal limit is ${globalMinWithdrawal} Coins.`, "error");
+            }
+            // Added safety check ?.
+            if (amount > (currentUserData?.coins || 0)) {
+                return window.showModal("Balance Error", "Insufficient coins balance in your wallet.", "error");
+            }
+
+            showLoader(true);
+            try {
+                // Deduct users coins from profile first
+                const updatedCoins = (currentUserData?.coins || 0) - amount;
+                
+                await updateDoc(doc(db, "users", authUser.uid), { coins: updatedCoins });
+
+                // Create new Withdraw document inside withdrawals collection
+                await addDoc(collection(db, "withdrawals"), {
+                    userId: authUser.uid, 
+                    email: currentUserData?.email || authUser.email,
+                    amount: amount,
+                    method: method,
+                    accountNumber: accountNum,
+                    status: 'Pending',
+                    time: new Date().getTime()
+                });
+
+                // Clear input values safely (FIXED Form Reset Issue)
+                document.getElementById('withdraw-amount').value = '';
+                document.getElementById('withdraw-account').value = '';
+                document.getElementById('withdraw-method').selectedIndex = 0; 
+                document.getElementById('live-taka-preview').textContent = '0.00';
+
+                window.showModal("Request Submitted", "Your request is registered! Admin will process your payment soon.", "success");
+            } catch(e) {
+                window.showModal("Request Failed", e.message, "error");
+            } finally {
+                showLoader(false);
+            }
+        });
+
+        // Logout Controller
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            signOut(auth);
+        });
+
+        // Generator for 1-by-1 "Live Payouts" UI Ticker (Beautiful 2-Line stacked format)
+        function startLivePayoutTicker() {
+            const ticker = document.getElementById('payout-ticker');
+            const prefixes = ['017', '019', '018', '016', '013', '015'];
+            const methods = [
+                { name: 'bKash', color: 'text-pink-500', bg: 'bg-pink-500/10' },
+                { name: 'Nagad', color: 'text-orange-500', bg: 'bg-orange-500/10' }
+            ];
+            
+            // Generate initial list of 30 items
+            let itemsHTML = '';
+            for(let i = 0; i < 30; i++) {
+                const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+                const suffix = Math.floor(100 + Math.random() * 900);
+                const method = methods[Math.floor(Math.random() * methods.length)];
+                const amount = Math.floor(10 + Math.random() * 200) * 10; // Random amount like 100 to 2000
+                
+                itemsHTML += `
+                    <div class="flex flex-col justify-center w-full h-[52px] shrink-0 min-w-0 py-1">
+                        <!-- Line 1: Withdrawal Successful -->
+                        <div class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            Withdrawal Successful
+                        </div>
+                        <!-- Line 2: Number, Method and Amount side by side -->
+                        <div class="flex justify-between items-center mt-0.5">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-[13px] font-bold text-gray-200 tracking-wider shrink-0">${prefix}***${suffix}</span>
+                                <span class="text-[10px] font-extrabold ${method.color} ${method.bg} px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0">${method.name}</span>
+                            </div>
+                            <span class="font-extrabold text-accent text-sm whitespace-nowrap shrink-0">Tk ${amount}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            ticker.innerHTML = itemsHTML;
+
+            // Animate scroll 1 by 1 infinitely with custom row height of 52px
+            setInterval(() => {
+                ticker.style.transition = 'transform 0.4s ease-in-out';
+                ticker.style.transform = `translateY(-52px)`; // Exact height of 1 row item
+                
+                setTimeout(() => {
+                    // Instantly snap back to 0 without transition and move the first element to the end
+                    ticker.style.transition = 'none';
+                    ticker.style.transform = `translateY(0)`;
+                    ticker.appendChild(ticker.firstElementChild);
+                }, 450); // Wait for sliding animation to complete
+            }, 3000); // Trigger every 3 seconds
+        }
+
+        // Initialize Live Payout UI
+        startLivePayoutTicker();
+
+        // Boot loader setup
+        lucide.createIcons();
+    </script>
+</body>
+</html>
+
+```
